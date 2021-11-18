@@ -3,6 +3,7 @@ from windrose import WindroseAxes
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 import matplotlib as mpl
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -31,7 +32,7 @@ def get_station_id (dataset_id,station_names,tathy_instance):
         station_id =[s["station_id"] for s in station]
     return station_id
 
-def plot_wind_rose(ws,wd,nsector=16, normed=True, opening=0.8, edgecolor='white',cmap='viridis',**kw):
+def plot_wind_rose(ws,wd,nsector=16, normed=True, opening=0.8, edgecolor='white',cmap='viridis',save_fig=False,**kw):
     velocity_ds=xr.merge([ws,wd])
     if (type(ws) == xr.core.dataarray.Dataset) and (type(wd) == xr.core.dataarray.Dataset):
         ws_name = "wind_speed"
@@ -46,6 +47,8 @@ def plot_wind_rose(ws,wd,nsector=16, normed=True, opening=0.8, edgecolor='white'
     ax.set_xticklabels(['E', 'NE','N', 'NW', 'W', 'SW', 'S', 'SE'])
     ax.set_legend()
     fig=plt.gcf()
+    if save_fig:
+        plt.savefig("wind_rose.png")
     plt.close()
     return fig
 
@@ -89,7 +92,7 @@ def ds_utc_local(ds,local_zone='Pacific/Auckland'):
     ds=ds.assign_coords(time=time_local,keep_attrs=True)
     return ds
 
-def plot_hourly_composite(data_array,time_zone='Pacific/Auckland',average="day", dpi=150, save_files=False, **kw):
+def plot_hourly_composite(data_array,time_zone='Pacific/Auckland',average="day", dpi=150, save_fig=False,save_files=False, **kw):
     if data_array.name:
         cbar_name = data_array.name
     else:
@@ -124,6 +127,8 @@ def plot_hourly_composite(data_array,time_zone='Pacific/Auckland',average="day",
 #     ax.xaxis.set_major_locator(xtick_locator)
 #     ax.xaxis.set_major_formatter(xtick_formatter)
     fig.autofmt_xdate()
+    if save_fig:
+        plt.savefig("hourly_composite_plot.png",dpi=dpi)
     plt.close()
     if save_files==True:
         df_stack.unstack(level=average).to_csv("hourly_composite_"+average+".csv")
@@ -167,7 +172,7 @@ def plot_violinplot(data_array,period="year", dpi=150, save_fig=False,save_files
 #     ax.xaxis.set_major_formatter(xtick_formatter)
     fig.autofmt_xdate()
     if save_fig:
-        plt.save_fig("violin_plot.png",dpi=dpi)
+        plt.savefig("violin_plot.png",dpi=dpi)
     plt.close()
     if save_files==True:
         df.to_csv("time_series_data"+".csv")
