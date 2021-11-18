@@ -433,7 +433,7 @@ def get_data_from_lat_lon(ts,owner,method,product_code,lat,lon):
     #get all the datasets from a single point of a product
     ###
     datasets=ts.datasets
-    [d for d in datasets if d["owner"] == owner and d["method"]==method and d["product_code"] == product_code]
+    dataset_info_list=[d for d in datasets if d["owner"] == owner and d["method"]==method and d["product_code"] == product_code]
     dataset_list = list()
     for dataset_info in dataset_info_list:
         station_info=ts.get_stations(dataset_info["dataset_id"], lat=lat, lon=lon)[0]
