@@ -90,6 +90,12 @@ def ds_utc_local(ds,local_zone='Pacific/Auckland'):
     return ds
 
 def plot_hourly_composite(data_array,time_zone='Pacific/Auckland',average="day", dpi=150, save_files=False, **kw):
+    if data_array.name:
+        cbar_name = data_array.name
+    else:
+        cbar_name = None
+    if data_array.attrs['units']:
+        cbar_name = cbar_name + " (" +data_array.attrs['units']+")"
     df = data_array.to_dataframe().reset_index()
     df = (
         df.groupby(
@@ -104,18 +110,67 @@ def plot_hourly_composite(data_array,time_zone='Pacific/Auckland',average="day",
         .rename_axis(index=["year", "month", "day", "hour"])
     )
     df_stack = df.groupby([average, "hour"]).mean(average)
+    mpl.rcdefaults()
     fig, ax = plt.subplots(dpi=dpi)
-    sns.heatmap(df_stack.unstack(level=average), ax=ax, **kw)
+    sns.heatmap(df_stack.unstack(level=average), ax=ax, cbar_kws={'label':cbar_name},**kw)
     plt.xticks(rotation=90)
     if average == "day" or average == "month":
         for label in ax.get_xaxis().get_ticklabels()[::2]:
             label.set_visible(False)
     for label in ax.get_yaxis().get_ticklabels()[::2]:
         label.set_visible(False)
+#    xtick_locator = AutoDateLocator()
+#    xtick_formatter = AutoDateFormatter(xtick_locator)
+#     ax.xaxis.set_major_locator(xtick_locator)
+#     ax.xaxis.set_major_formatter(xtick_formatter)
     fig.autofmt_xdate()
     plt.close()
     if save_files==True:
         df_stack.unstack(level=average).to_csv("hourly_composite_"+average+".csv")
+    return fig
+
+def plot_violinplot(data_array,period="year", dpi=150, save_fig=False,save_files=False, **kw):
+    
+    if data_array.name:
+        y_label = data_array.name
+    else:
+        y_label = "value"
+    if data_array.attrs['units']:
+        y_label = y_label + " (" +data_array.attrs['units']+")"
+    
+    df = data_array.to_dataframe().reset_index()
+    df = (
+        df.groupby(
+            [
+                df.time.dt.strftime("%Y"),
+                df.time.dt.strftime("%Y-%m"),
+                df.time.dt.strftime("%Y-%m-%d"),
+                df.time.dt.strftime("%H:00"),
+            ]
+        )[df.columns[-1]]
+        .mean()
+        .rename_axis(index=["year", "month", "day", "hour"])
+    )
+    df=df.to_frame().reset_index()
+    
+    mpl.rcdefaults()
+    sns.set_theme(style="whitegrid")
+    fig, ax = plt.subplots(dpi=dpi)
+    # Draw a nested violinplot and split the violins for easier comparison
+    sns.violinplot(data=df, x=period, y=df.columns[-1],palette="muted")
+    sns.despine(left=True)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+    ax.set_ylabel(y_label)
+#    xtick_locator = AutoDateLocator()
+#    xtick_formatter = AutoDateFormatter(xtick_locator)
+#     ax.xaxis.set_major_locator(xtick_locator)
+#     ax.xaxis.set_major_formatter(xtick_formatter)
+    fig.autofmt_xdate()
+    if save_fig:
+        plt.save_fig("violin_plot.png",dpi=dpi)
+    plt.close()
+    if save_files==True:
+        df.to_csv("time_series_data"+".csv")
     return fig
 
 def get_horizontal_idx_from_latlon(ds,lat,lon):
@@ -355,3 +410,32 @@ def select_ds_by_hour(ds,start_hour,end_hour):
     select_matrix=((ds.time.dt.hour>=start_hour)&\
                    (ds.time.dt.hour<=end_hour))
     return ds.where(select_matrix,drop=True)
+
+def get_all_dataset_information(ts,save_file_loc="envlib_data_catalog.xlsx"):
+    ###
+    # get all the datasets information from Tethys.
+    # ts is the Tethys instance, save_file_loc is the location and file name to save the information.
+    ###
+    datasets= ts.datasets
+    datasets_table=pd.DataFrame(datasets)
+    owner_column=datasets_table.pop("owner")
+    feature_column=datasets_table.pop("feature")
+    parameter_column=datasets_table.pop("parameter")
+    datasets_table.insert(0, "owner", owner_column)
+    datasets_table.insert(0, "parameter", parameter_column)
+    datasets_table.insert(0,"feature",feature_column)
+    datasets_table=datasets_table.set_index(['feature', 'parameter',"owner"]).sort_index()
+    datasets_table.to_excel(save_file_loc)
+    return datasets_table
+
+def get_data_from_lat_lon(ts,owner,method,product_code,lat,lon):
+    ###
+    #get all the datasets from a single point of a product
+    ###
+    datasets=ts.datasets
+    [d for d in datasets if d["owner"] == owner and d["method"]==method and d["product_code"] == product_code]
+    dataset_list = list()
+    for dataset_info in dataset_info_list:
+        station_info=ts.get_stations(dataset_info["dataset_id"], lat=lat, lon=lon)[0]
+        dataset_list.append(ts.get_results(dataset_info["dataset_id"], station_info["station_id"], squeeze_dims=True, output='Dataset'))
+    return xr.merge(dataset_list,compat="override")
