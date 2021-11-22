@@ -92,7 +92,7 @@ def ds_utc_local(ds,local_zone='Pacific/Auckland'):
     ds=ds.assign_coords(time=time_local,keep_attrs=True)
     return ds
 
-def plot_hourly_composite(data_array,time_zone='Pacific/Auckland',average="day", dpi=150, save_fig=False,save_files=False, **kw):
+def plot_hourly_composite(data_array,average="day", dpi=150, save_fig=False,save_files=False, **kw):
     if data_array.name:
         cbar_name = data_array.name
     else:
@@ -433,7 +433,7 @@ def get_all_dataset_information(ts,save_file_loc="envlib_data_catalog.xlsx"):
     datasets_table.to_excel(save_file_loc)
     return datasets_table
 
-def get_data_from_lat_lon(ts,owner,method,product_code,lat,lon):
+def get_data_from_lat_lon(ts,owner,method,product_code,lat,lon,squeeze_dims=True,**kw):
     ###
     #get all the datasets from a single point of a product
     ###
@@ -442,5 +442,5 @@ def get_data_from_lat_lon(ts,owner,method,product_code,lat,lon):
     dataset_list = list()
     for dataset_info in dataset_info_list:
         station_info=ts.get_stations(dataset_info["dataset_id"], lat=lat, lon=lon)[0]
-        dataset_list.append(ts.get_results(dataset_info["dataset_id"], station_info["station_id"], squeeze_dims=True, output='Dataset'))
+        dataset_list.append(ts.get_results(dataset_info["dataset_id"], station_info["station_id"],output='Dataset',squeeze_dims=squeeze_dims,**kw))
     return xr.merge(dataset_list,compat="override")
